@@ -1,34 +1,45 @@
 from flask import Flask, request
-from google.cloud import dialogflow
+from twilio.rest import Client
 import os
-import twilio
-from twilio.twiml.messaging_response import MessagingResponse
-import uuid
 
 app = Flask(__name__)
 
-@app.route("/", methods=["POST"])
-def handle_incoming_message():
-    # Get the incoming message from Twilio
-    incoming_message = request.values.get("Body", "")
+# Your Twilio account SID and Auth Token
+account_sid = 'ACee517d6a707743d96d48aab9ee5f2034'
+auth_token = 'b71741aec4a3af0ed5673116ad4b85db'
 
-    # Use the Dialogflow API to process the incoming message
-    project_id = os.getenv("dining-out-ufhe")
-    session_id = str(uuid.uuid1())
-    language_code = "en-US"
-    session_client = dialogflow.SessionsClient()
-    session = session_client.session_path(project_id, session_id)
-    text_input = dialogflow.types.TextInput(text=incoming_message, language_code=language_code)
-    query_input = dialogflow.types.QueryInput(text=text_input)
-    response = session_client.detect_intent(session=session, query_input=query_input)
+# Initialize the Twilio client
+client = Client(account_sid, auth_token)
 
-    # Get the response from Dialogflow
-    reply = response.query_result.fulfillment_text
+# The Twilio Sandbox number
+from_ = 'whatsapp:+14155238886'
 
-    # Send the response back to Twilio
-    resp = MessagingResponse()
-    resp.message(reply)
-    return str(resp)
+@app.route('/', methods=['POST'])
+def handle_request():
+    # Get the request data from Dialogflow
+    req = request.get_json(silent=True, force=True)
+    
+    # Extract the action and parameters from the request
+    action = req['queryResult']['action']
+    parameters = req['queryResult']['parameters']
+    
+    # Send a message to WhatsApp using Twilio
+    if action == 'send_message':
+        to = parameters['+91 63517 28234']
+        message = parameters['message']
+        client.messages.create(
+            from_=from_,
+            body=message,
+            to=f'whatsapp:{to}'
+        )
+        response = "Message sent."
+    else:
+        response = "Action not supported."
+    
+    # Return the response to Dialogflow
+    return {
+        "fulfillmentText": response
+    }
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    app.run(port=int(os.environ.get('PORT', 8080)))
