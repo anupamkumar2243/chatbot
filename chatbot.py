@@ -13,6 +13,9 @@ client = Client(account_sid, auth_token)
 
 # The Twilio Sandbox number
 from_ = 'whatsapp:+14155238886'
+@app.route('/', methods=['POST'])
+def hello():
+    return('hello world')
 
 @app.route('/', methods=['POST'])
 def handle_request():
